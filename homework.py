@@ -40,10 +40,7 @@ logger.addHandler(handler)
 
 
 def send_message(bot, message):
-    """Функция отправляет сообщение в Telegram чат.
-#    переменной окружения TELEGRAM_CHAT_ID. Принимает на вход два параметра:
-#    экземпляр класса Bot и строку с текстом сообщения.
-    """
+    """Функция отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception as error:
