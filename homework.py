@@ -40,9 +40,9 @@ logger.addHandler(handler)
 
 
 def send_message(bot, message):
-    """Функция отправляет сообщение в Telegram чат, определяемый
-    переменной окружения TELEGRAM_CHAT_ID. Принимает на вход два параметра:
-    экземпляр класса Bot и строку с текстом сообщения.
+    """Функция отправляет сообщение в Telegram чат.
+#    переменной окружения TELEGRAM_CHAT_ID. Принимает на вход два параметра:
+#    экземпляр класса Bot и строку с текстом сообщения.
     """
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
@@ -72,8 +72,9 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Функция проверяет ответ API на корректность. В качестве параметра
-    функция получает ответ API, приведенный к типам данных Python.
+    """Функция проверяет ответ API на корректность.
+    В качестве параметра функция получает ответ API,
+    приведенный к типам данных Python.
     """
     if not isinstance(response, Dict):
         raise TypeError(
@@ -83,16 +84,15 @@ def check_response(response):
         raise TypeError(
             'Ошибка ответа API: Домашки не являются списком!')
     if homeworks is None:
-        raise exceptions.NoHWStatusChangeError('Статус домашки не поменялся.')
+        raise exceptions.NoHWStatusChangeError(
+            'Статус домашки не поменялся.')
     return homeworks
 
 
 def parse_status(homework):
-    """Функция извлекает из информации о конкретной домашней работе
-    статус этой работы. В качестве параметра функция получает только
-    один элемент из списка домашних работ. В случае успеха, функция
-    возвращает подготовленную для отправки в Telegram строку, содержащую
-    один из вердиктов словаря HOMEWORK_STATUSES.
+    """Функция извлекает из элемента статус домашней работы.
+    В случае успеха, функция возвращает подготовленную для отправки
+    в Telegram строку, содержащую один из вердиктов словаря HOMEWORK_STATUSES.
     """
     try:
         homework_name = homework.get('homework_name')
@@ -106,9 +106,9 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Функция проверяет доступность переменных окружения, которые
-    необходимы для работы программы. Если отсутствует хотя бы одна
-    переменная окружения — функция должна вернуть False, иначе — True.
+    """Функция проверяет доступность переменных окружения.
+    Если отсутствует хотя бы одна переменная окружения — функция
+    должна вернуть False, иначе — True.
     """
     try:
         if not all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)):
