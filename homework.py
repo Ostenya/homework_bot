@@ -33,7 +33,8 @@ HOMEWORK_STATUSES = {
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(stream=stdout)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -43,7 +44,6 @@ def send_message(bot, message):
     переменной окружения TELEGRAM_CHAT_ID. Принимает на вход два параметра:
     экземпляр класса Bot и строку с текстом сообщения.
     """
-
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception as error:
@@ -58,7 +58,6 @@ def get_api_answer(current_timestamp):
     В случае успешного запроса возвращает ответ API, преобразованный
     из формата JSON к типам данных Python.
     """
-
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     homework_status = requests.get(
@@ -76,7 +75,6 @@ def check_response(response):
     """Функция проверяет ответ API на корректность. В качестве параметра
     функция получает ответ API, приведенный к типам данных Python.
     """
-
     if not isinstance(response, Dict):
         raise TypeError(
             'Ошибка ответа API: Ответ не является словарём!')
@@ -96,7 +94,6 @@ def parse_status(homework):
     возвращает подготовленную для отправки в Telegram строку, содержащую
     один из вердиктов словаря HOMEWORK_STATUSES.
     """
-
     try:
         homework_name = homework.get('homework_name')
         homework_status = homework.get('status')
@@ -113,7 +110,6 @@ def check_tokens():
     необходимы для работы программы. Если отсутствует хотя бы одна
     переменная окружения — функция должна вернуть False, иначе — True.
     """
-
     try:
         if not all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)):
             return False
@@ -126,29 +122,18 @@ def check_tokens():
 
 def error_log_and_message(bot, error, exc_info=False):
     """Функция логирует ошибку и отправляет сообщение в Телеграм-чат."""
-
     logger.error(error, exc_info=exc_info)
     bot.send_message(TELEGRAM_CHAT_ID, error)
 
 
 def main():
     """Основная логика работы бота."""
-
     if not check_tokens():
         logger.critical('Отсутствуют обязательные переменные окружения')
         raise exceptions.TokenError('Необходимо определить токены и чат-ID!')
 
     bot = Bot(token=TELEGRAM_TOKEN)
-    try:
-        current_timestamp = int(time.time())
-        if current_timestamp < 1637092500:
-            raise exceptions.CurrentTimeError(
-                'Текущее время определено неправильно')
-    except exceptions.CurrentTimeError as error:
-        error_log_and_message(bot, error)
-    except Exception as error:
-        message = f'Сбой в определении текущего времени: {error}'
-        error_log_and_message(bot, message)
+    current_timestamp = int(time.time())
 
     while True:
         try:

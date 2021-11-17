@@ -4,7 +4,3 @@ class TokenError(Exception):
 
 class NoHWStatusChangeError(Exception):
     pass
-
-
-class CurrentTimeError(Exception):
-    pass
