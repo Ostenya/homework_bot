@@ -7,6 +7,7 @@ from typing import Dict, List
 import requests
 from dotenv import load_dotenv
 from telegram import Bot
+from telegram.error import TelegramError
 
 import exceptions
 
@@ -43,7 +44,7 @@ def send_message(bot, message):
     """Функция отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception as error:
+    except TelegramError as error:
         logger.error(f'Сбой при отправлении сообщения: {error}')
     else:
         logger.info('Отправлено сообщение в чат')
@@ -63,8 +64,7 @@ def get_api_answer(current_timestamp):
         params=params
     )
     if homework_status.status_code != 200:
-        raise Exception(
-            'API возвращает код, отличный от 200')
+        raise ConnectionError('Ошибка соединения')
     return homework_status.json()
 
 
@@ -77,12 +77,12 @@ def check_response(response):
         raise TypeError(
             'Ошибка ответа API: Ответ не является словарём!')
     homeworks = response.get('homeworks')
-    if not isinstance(homeworks, List):
-        raise TypeError(
-            'Ошибка ответа API: Домашки не являются списком!')
     if homeworks is None:
         raise exceptions.NoHWStatusChangeError(
             'Статус домашки не поменялся.')
+    if not isinstance(homeworks, List):
+        raise TypeError(
+            'Ошибка ответа API: Домашки не являются списком!')
     return homeworks
 
 
@@ -91,13 +91,14 @@ def parse_status(homework):
     В случае успеха, функция возвращает подготовленную для отправки
     в Telegram строку, содержащую один из вердиктов словаря HOMEWORK_STATUSES.
     """
-    try:
-        homework_name = homework.get('homework_name')
-        homework_status = homework.get('status')
-        if homework_status not in HOMEWORK_STATUSES:
-            raise ValueError('Недокументированный статус домашней работы!')
-    except ValueError as error:
-        logger.error(error)
+    homework_name = homework.get('homework_name')
+    if homework_name is None:
+        raise KeyError('Ответ не содержит имени домашней работы!')
+    homework_status = homework.get('status')
+    if homework_status is None:
+        raise KeyError('Ответ не содержит стутуса домашней работы!')
+    if homework_status not in HOMEWORK_STATUSES:
+        raise ValueError('Недокументированный статус домашней работы!')
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
@@ -108,19 +109,20 @@ def check_tokens():
     должна вернуть False, иначе — True.
     """
     try:
-        if not all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)):
-            return False
+        return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
     except NameError:
         return False
     except KeyError:
         return False
-    return True
 
 
-def error_log_and_message(bot, error, exc_info=False):
+def error_log_and_message(bot, error, errors_occured, exc_info=False):
     """Функция логирует ошибку и отправляет сообщение в Телеграм-чат."""
     logger.error(error, exc_info=exc_info)
-    bot.send_message(TELEGRAM_CHAT_ID, error)
+    error_text = str(error)
+    if error_text not in errors_occured:
+        errors_occured.add(error_text)
+        bot.send_message(TELEGRAM_CHAT_ID, error)
 
 
 def main():
@@ -131,23 +133,27 @@ def main():
 
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
+    errors_occured = set()
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             current_timestamp = int(response.get('current_date'))
-        except TypeError as error:
-            error_log_and_message(bot, error)
+            for hw in homeworks:
+                message = parse_status(hw)
         except exceptions.NoHWStatusChangeError as error:
             logger.debug(error)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            error_log_and_message(bot, message, exc_info=True)
+            error_log_and_message(
+                bot,
+                message,
+                errors_occured,
+                exc_info=True
+                )
         else:
-            for hw in homeworks:
-                message = parse_status(hw)
-                send_message(bot, message)
+            send_message(bot, message)
         finally:
             time.sleep(RETRY_TIME)
 
