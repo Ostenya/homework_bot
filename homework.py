@@ -64,7 +64,8 @@ def get_api_answer(current_timestamp):
         params=params
     )
     if homework_status.status_code != 200:
-        raise ConnectionError('Ошибка соединения')
+        raise exceptions.ConnectionAPINot200Error(
+            'Ошибка соединения: код не равен 200')
     return homework_status.json()
 
 
@@ -74,14 +75,14 @@ def check_response(response):
     приведенный к типам данных Python.
     """
     if not isinstance(response, Dict):
-        raise TypeError(
+        raise exceptions.APIResponseNotDict(
             'Ошибка ответа API: Ответ не является словарём!')
     homeworks = response.get('homeworks')
     if homeworks is None:
         raise exceptions.NoHWStatusChangeError(
             'Статус домашки не поменялся.')
     if not isinstance(homeworks, List):
-        raise TypeError(
+        raise exceptions.ResponseHWsNotList(
             'Ошибка ответа API: Домашки не являются списком!')
     return homeworks
 
@@ -93,12 +94,15 @@ def parse_status(homework):
     """
     homework_name = homework.get('homework_name')
     if homework_name is None:
-        raise KeyError('Ответ не содержит имени домашней работы!')
+        raise exceptions.ParseStatusKeyError(
+            'Ответ не содержит имени домашней работы!')
     homework_status = homework.get('status')
     if homework_status is None:
-        raise KeyError('Ответ не содержит стутуса домашней работы!')
+        raise exceptions.ParseStatusKeyError(
+            'Ответ не содержит стутуса домашней работы!')
     if homework_status not in HOMEWORK_STATUSES:
-        raise ValueError('Недокументированный статус домашней работы!')
+        raise exceptions.ParseStatusValueError(
+            'Недокументированный статус домашней работы!')
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
@@ -151,7 +155,7 @@ def main():
                 message,
                 errors_occured,
                 exc_info=True
-                )
+            )
         else:
             send_message(bot, message)
         finally:
