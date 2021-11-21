@@ -47,7 +47,7 @@ def send_message(bot, message):
     except TelegramError as error:
         logger.error(f'Сбой при отправлении сообщения: {error}')
     else:
-        logger.info('Отправлено сообщение в чат')
+        logger.info(f'Отправлено сообщение в чат: {message}')
 
 
 def get_api_answer(current_timestamp):
@@ -78,12 +78,12 @@ def check_response(response):
         raise exceptions.APIResponseNotDict(
             'Ошибка ответа API: Ответ не является словарём!')
     homeworks = response.get('homeworks')
-    if homeworks is None:
-        raise exceptions.NoHWStatusChangeError(
-            'Статус домашки не поменялся.')
     if not isinstance(homeworks, List):
         raise exceptions.ResponseHWsNotList(
             'Ошибка ответа API: Домашки не являются списком!')
+    if homeworks == {}:
+        raise exceptions.NoHWStatusChangeError(
+            'Статус домашки не поменялся.')
     return homeworks
 
 
@@ -112,20 +112,13 @@ def check_tokens():
     Если отсутствует хотя бы одна переменная окружения — функция
     должна вернуть False, иначе — True.
     """
-    try:
-        return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
-    except NameError:
-        return False
-    except KeyError:
-        return False
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
-def error_log_and_message(bot, error, errors_occured, exc_info=False):
+def error_log_and_message(bot, error, some_error_class, exc_info=False):
     """Функция логирует ошибку и отправляет сообщение в Телеграм-чат."""
     logger.error(error, exc_info=exc_info)
-    error_text = str(error)
-    if error_text not in errors_occured:
-        errors_occured.add(error_text)
+    if type(error) != some_error_class:
         bot.send_message(TELEGRAM_CHAT_ID, error)
 
 
@@ -137,15 +130,16 @@ def main():
 
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
-    errors_occured = set()
+    previous_error_class = type()
 
     while True:
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             current_timestamp = int(response.get('current_date'))
+            message = {}
             for hw in homeworks:
-                message = parse_status(hw)
+                message += parse_status(hw) + '\n'
         except exceptions.NoHWStatusChangeError as error:
             logger.debug(error)
         except Exception as error:
@@ -153,9 +147,10 @@ def main():
             error_log_and_message(
                 bot,
                 message,
-                errors_occured,
+                previous_error_class,
                 exc_info=True
             )
+            previous_error_class = type(error)
         else:
             send_message(bot, message)
         finally:
