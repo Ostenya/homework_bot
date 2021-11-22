@@ -81,7 +81,7 @@ def check_response(response):
     if not isinstance(homeworks, List):
         raise exceptions.ResponseHWsNotList(
             'Ошибка ответа API: Домашки не являются списком!')
-    if homeworks == {}:
+    if homeworks == []:
         raise exceptions.NoHWStatusChangeError(
             'Статус домашки не поменялся.')
     return homeworks
@@ -115,10 +115,16 @@ def check_tokens():
     return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
-def error_log_and_message(bot, error, some_error_class, exc_info=False):
+def error_log_and_message(
+    bot,
+    error,
+    error_class,
+    some_error_class,
+    exc_info=False
+):
     """Функция логирует ошибку и отправляет сообщение в Телеграм-чат."""
     logger.error(error, exc_info=exc_info)
-    if type(error) != some_error_class:
+    if error_class != some_error_class:
         bot.send_message(TELEGRAM_CHAT_ID, error)
 
 
@@ -137,20 +143,20 @@ def main():
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             current_timestamp = int(response.get('current_date'))
-            message = {}
-            for hw in homeworks:
-                message += parse_status(hw) + '\n'
+            message = '\n'.join([hw for hw in homeworks])
         except exceptions.NoHWStatusChangeError as error:
             logger.debug(error)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
+            error_type = type(error)
             error_log_and_message(
                 bot,
                 message,
+                error_type,
                 previous_error_class,
                 exc_info=True
             )
-            previous_error_class = type(error)
+            previous_error_class = error_type
         else:
             send_message(bot, message)
         finally:
