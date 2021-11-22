@@ -143,7 +143,7 @@ def main():
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             current_timestamp = int(response.get('current_date'))
-            message = '\n'.join([hw for hw in homeworks])
+            message = '\n'.join((hw for hw in homeworks))
         except exceptions.NoHWStatusChangeError as error:
             logger.debug(error)
         except Exception as error:
