@@ -119,12 +119,12 @@ def error_log_and_message(
     bot,
     error,
     error_class,
-    some_error_class,
+    prev_error_class,
     exc_info=False
 ):
     """Функция логирует ошибку и отправляет сообщение в Телеграм-чат."""
     logger.error(error, exc_info=exc_info)
-    if error_class != some_error_class:
+    if error_class != prev_error_class:
         bot.send_message(TELEGRAM_CHAT_ID, error)
 
 
@@ -143,7 +143,7 @@ def main():
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             current_timestamp = int(response.get('current_date'))
-            message = '\n'.join((hw for hw in homeworks))
+            message = '\n'.join((parse_status(hw) for hw in homeworks))
         except exceptions.NoHWStatusChangeError as error:
             logger.debug(error)
         except Exception as error:
